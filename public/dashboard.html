@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — CSV Manager</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+
+        /* NAV */
+        nav {
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        nav h1 { font-size: 18px; font-weight: 600; }
+        .nav-right { display: flex; align-items: center; gap: 12px; font-size: 13px; color: #94a3b8; }
+        .btn-sm {
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            border: 1px solid #334155;
+            background: transparent;
+            color: #e2e8f0;
+            transition: background 0.2s;
+        }
+        .btn-sm:hover { background: #334155; }
+        .btn-primary { background: #2563eb; border-color: #2563eb; color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-danger { border-color: #991b1b; color: #fca5a5; }
+        .btn-danger:hover { background: #450a0a; }
+        .btn-success { border-color: #166534; color: #86efac; }
+        .btn-success:hover { background: #052e16; }
+
+        /* MAIN */
+        main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 18px;
+        }
+        .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* UPLOAD */
+        .upload-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        input[type="file"] { font-size: 13px; color: #94a3b8; }
+        input[type="file"]::file-selector-button {
+            padding: 7px 14px;
+            background: #334155;
+            border: none;
+            border-radius: 6px;
+            color: #e2e8f0;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        /* ARCHIVOS */
+        .archivo-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        .archivo-nombre { font-weight: 500; }
+        .archivo-meta { color: #64748b; font-size: 12px; margin-top: 2px; }
+        .archivo-acciones { display: flex; gap: 8px; }
+        .badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+        .badge-green { background: #052e16; color: #86efac; }
+        .badge-blue  { background: #0c1a3a; color: #93c5fd; }
+
+        /* STATS */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stat {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 14px;
+        }
+        .stat-val { font-size: 22px; font-weight: 600; color: #60a5fa; }
+        .stat-lbl { font-size: 12px; color: #64748b; margin-top: 4px; }
+
+        /* CHARTS */
+        .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+        .chart-box { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 16px; }
+        .chart-box label { font-size: 12px; color: #64748b; display: block; margin-bottom: 8px; }
+        select {
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: #e2e8f0;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 12px;
+            width: 100%;
+        }
+
+        /* TABLA */
+        .tabla-wrapper { overflow-x: auto; max-height: 360px; overflow-y: auto; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th {
+            background: #2563eb;
+            color: white;
+            padding: 10px 14px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+        }
+        tbody tr:nth-child(even) { background: #0f172a; }
+        tbody tr:hover { background: #1e3a5f; }
+        td { padding: 8px 14px; border-bottom: 1px solid #1e293b; }
+
+        /* RESUMEN LIMPIEZA */
+        .resumen {
+            background: #052e16;
+            border: 1px solid #166534;
+            border-radius: 8px;
+            padding: 14px 18px;
+            font-size: 13px;
+            color: #86efac;
+            display: none;
+        }
+
+        /* TOAST */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 12px 20px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            font-size: 13px;
+            z-index: 999;
+            display: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+
+        .empty { text-align: center; color: #475569; padding: 24px; font-size: 13px; }
+        @media (max-width: 640px) { .charts-row { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<nav>
+    <h1>📊 CSV Manager</h1>
+    <div class="nav-right">
+        <span id="saludo"></span>
+        <button class="btn-sm" onclick="exportarPDF()">Exportar PDF</button>
+        <button class="btn-sm btn-danger" onclick="cerrarSesion()">Salir</button>
+    </div>
+</nav>
+
+<main>
+
+    <!-- SUBIR ARCHIVO -->
+    <div class="card">
+        <h2>Subir archivo CSV</h2>
+        <div class="upload-row">
+            <input type="file" id="inputArchivo" accept=".csv">
+            <button class="btn-sm btn-primary" onclick="subirArchivo()">⬆ Subir al servidor</button>
+        </div>
+    </div>
+
+    <!-- MIS ARCHIVOS -->
+    <div class="card">
+        <h2>Mis archivos</h2>
+        <div id="listaArchivos"><p class="empty">No has subido ningún archivo aún.</p></div>
+    </div>
+
+    <!-- VISUALIZACIÓN (se muestra al cargar un archivo) -->
+    <div id="seccionDatos" style="display:none">
+
+        <!-- ESTADÍSTICAS -->
+        <div class="card">
+            <h2>Estadísticas del dataset: <span id="nombreDataset" style="color:#60a5fa;text-transform:none"></span></h2>
+            <div class="stats-grid" id="statsGrid"></div>
+            <div class="resumen" id="resumenLimpieza"></div>
+        </div>
+
+        <!-- GRÁFICOS -->
+        <div class="charts-row">
+            <div class="chart-box">
+                <label>Columna para gráfico de barras</label>
+                <select id="selectColumnaBar" onchange="renderGraficoBar()"></select>
+                <canvas id="chartBar"></canvas>
+            </div>
+            <div class="chart-box">
+                <label>Columna para histograma (valores numéricos)</label>
+                <select id="selectColumnaHist" onchange="renderGraficoHist()"></select>
+                <canvas id="chartHist"></canvas>
+            </div>
+        </div>
+
+        <!-- TABLA -->
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                <h2 style="margin:0">Vista de datos</h2>
+                <button class="btn-sm btn-success" id="btnLimpiar" onclick="limpiarDataset()">🧹 Limpiar datos</button>
+            </div>
+            <div class="tabla-wrapper">
+                <div id="tablaContainer"></div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Autenticación ──────────────────────────────────────────────────────────
+const token = localStorage.getItem('token');
+if (!token) window.location.href = '/login.html';
+
+document.getElementById('saludo').textContent = 'Hola, ' + (localStorage.getItem('nombre') || 'usuario');
+
+function cerrarSesion() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('nombre');
+    window.location.href = '/login.html';
+}
+
+function authHeaders() {
+    return { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function toast(msg, tipo = 'info') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.style.display = 'block';
+    el.style.borderColor = tipo === 'error' ? '#991b1b' : tipo === 'ok' ? '#166534' : '#334155';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.style.display = 'none', 3000);
+}
+
+// ── Estado global ──────────────────────────────────────────────────────────
+let datosActuales = [];
+let columnasActuales = [];
+let archivoIdActual = null;
+let chartBar = null;
+let chartHist = null;
+
+// ── Subir archivo ──────────────────────────────────────────────────────────
+async function subirArchivo() {
+    const input = document.getElementById('inputArchivo');
+    if (!input.files[0]) { toast('Selecciona un archivo CSV primero.', 'error'); return; }
+
+    const form = new FormData();
+    form.append('archivo', input.files[0]);
+
+    try {
+        const res = await fetch('/api/csv/upload', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token },
+            body: form
+        });
+        const datos = await res.json();
+        if (!res.ok) { toast(datos.mensaje, 'error'); return; }
+        toast('✅ ' + datos.mensaje, 'ok');
+        input.value = '';
+        cargarListaArchivos();
+    } catch (e) {
+        toast('Error de conexión.', 'error');
+    }
+}
+
+// ── Listar archivos ────────────────────────────────────────────────────────
+async function cargarListaArchivos() {
+    try {
+        const res = await fetch('/api/csv', { headers: authHeaders() });
+        const datos = await res.json();
+        if (!res.ok) { cerrarSesion(); return; }
+
+        const cont = document.getElementById('listaArchivos');
+        if (!datos.archivos.length) {
+            cont.innerHTML = '<p class="empty">No has subido ningún archivo aún.</p>';
+            return;
+        }
+
+        cont.innerHTML = datos.archivos.map(a => `
+            <div class="archivo-item">
+                <div>
+                    <div class="archivo-nombre">
+                        ${a.nombre}
+                        ${a.yaLimpiado ? '<span class="badge badge-green">✓ Limpiado</span>' : '<span class="badge badge-blue">Sin limpiar</span>'}
+                    </div>
+                    <div class="archivo-meta">${a.totalFilas} filas · ${a.columnas.length} columnas · ${new Date(a.fechaSubida).toLocaleDateString('es-CO')}</div>
+                </div>
+                <div class="archivo-acciones">
+                    <button class="btn-sm btn-primary" onclick="verDatos('${a._id}', '${a.nombre}')">Ver datos</button>
+                    <button class="btn-sm btn-danger" onclick="eliminarArchivo('${a._id}')">Eliminar</button>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (e) {
+        toast('Error cargando archivos.', 'error');
+    }
+}
+
+// ── Ver datos de un archivo ────────────────────────────────────────────────
+async function verDatos(id, nombre) {
+    try {
+        const res = await fetch('/api/csv/' + id + '/datos', { headers: authHeaders() });
+        const datos = await res.json();
+        if (!res.ok) { toast(datos.mensaje, 'error'); return; }
+
+        archivoIdActual = id;
+        datosActuales = datos.datos;
+        columnasActuales = datos.columnas;
+
+        document.getElementById('nombreDataset').textContent = nombre;
+        document.getElementById('seccionDatos').style.display = 'block';
+        document.getElementById('resumenLimpieza').style.display = 'none';
+        document.getElementById('btnLimpiar').disabled = datos.yaLimpiado;
+        document.getElementById('btnLimpiar').textContent = datos.yaLimpiado ? '✓ Ya limpiado' : '🧹 Limpiar datos';
+
+        renderEstadisticas();
+        llenarSelectores();
+        renderGraficoBar();
+        renderGraficoHist();
+        renderTabla();
+
+        document.getElementById('seccionDatos').scrollIntoView({ behavior: 'smooth' });
+
+    } catch (e) {
+        toast('Error cargando datos.', 'error');
+    }
+}
+
+// ── Estadísticas ───────────────────────────────────────────────────────────
+function renderEstadisticas() {
+    const cols = columnasActuales;
+    const filas = datosActuales;
+    let html = `
+        <div class="stat"><div class="stat-val">${filas.length}</div><div class="stat-lbl">Total filas</div></div>
+        <div class="stat"><div class="stat-val">${cols.length}</div><div class="stat-lbl">Columnas</div></div>
+    `;
+
+    // Estadísticas por columna numérica
+    cols.forEach(col => {
+        const valores = filas.map(r => parseFloat(r[col])).filter(v => !isNaN(v));
+        if (valores.length === 0) return;
+        const sum = valores.reduce((a, b) => a + b, 0);
+        const avg = (sum / valores.length).toFixed(1);
+        const min = Math.min(...valores);
+        const max = Math.max(...valores);
+        html += `
+            <div class="stat">
+                <div class="stat-val" style="font-size:16px">${avg}</div>
+                <div class="stat-lbl">Promedio ${col}</div>
+                <div style="font-size:11px;color:#64748b;margin-top:4px">Min ${min} · Max ${max}</div>
+            </div>
+        `;
+    });
+
+    document.getElementById('statsGrid').innerHTML = html;
+}
+
+// ── Selectores de columna ──────────────────────────────────────────────────
+function llenarSelectores() {
+    const opts = columnasActuales.map(c => `<option value="${c}">${c}</option>`).join('');
+    document.getElementById('selectColumnaBar').innerHTML = opts;
+    document.getElementById('selectColumnaHist').innerHTML = opts;
+}
+
+// ── Gráfico de barras (distribución categórica) ────────────────────────────
+function renderGraficoBar() {
+    const col = document.getElementById('selectColumnaBar').value;
+    const counts = {};
+    datosActuales.forEach(r => {
+        const v = r[col] || 'N/A';
+        counts[v] = (counts[v] || 0) + 1;
+    });
+
+    const ctx = document.getElementById('chartBar').getContext('2d');
+    if (chartBar) chartBar.destroy();
+    chartBar = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(counts),
+            datasets: [{ label: 'Frecuencia', data: Object.values(counts), backgroundColor: '#2563eb88', borderColor: '#2563eb', borderWidth: 1 }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { labels: { color: '#94a3b8' } } },
+            scales: {
+                x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' }, beginAtZero: true }
+            }
+        }
+    });
+}
+
+// ── Histograma (valores numéricos) ─────────────────────────────────────────
+function renderGraficoHist() {
+    const col = document.getElementById('selectColumnaHist').value;
+    const valores = datosActuales.map(r => parseFloat(r[col])).filter(v => !isNaN(v));
+
+    if (valores.length === 0) {
+        if (chartHist) chartHist.destroy();
+        return;
+    }
+
+    // Crear 6 rangos (bins)
+    const min = Math.min(...valores), max = Math.max(...valores);
+    const binSize = (max - min) / 6 || 1;
+    const bins = Array.from({ length: 6 }, (_, i) => ({
+        label: (min + i * binSize).toFixed(1) + ' – ' + (min + (i + 1) * binSize).toFixed(1),
+        count: 0
+    }));
+    valores.forEach(v => {
+        const idx = Math.min(Math.floor((v - min) / binSize), 5);
+        bins[idx].count++;
+    });
+
+    const ctx = document.getElementById('chartHist').getContext('2d');
+    if (chartHist) chartHist.destroy();
+    chartHist = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: bins.map(b => b.label),
+            datasets: [{ label: col, data: bins.map(b => b.count), backgroundColor: '#0d9488aa', borderColor: '#0d9488', borderWidth: 1 }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { labels: { color: '#94a3b8' } } },
+            scales: {
+                x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: '#1e293b' } },
+                y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' }, beginAtZero: true }
+            }
+        }
+    });
+}
+
+// ── Tabla ──────────────────────────────────────────────────────────────────
+function renderTabla() {
+    if (!datosActuales.length) { document.getElementById('tablaContainer').innerHTML = '<p class="empty">Sin datos.</p>'; return; }
+    const cols = columnasActuales;
+    let html = '<table><thead><tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+    datosActuales.forEach(r => {
+        html += '<tr>' + cols.map(c => `<td>${r[c] ?? ''}</td>`).join('') + '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('tablaContainer').innerHTML = html;
+}
+
+// ── Limpiar dataset ────────────────────────────────────────────────────────
+async function limpiarDataset() {
+    if (!archivoIdActual) return;
+    if (!confirm('¿Limpiar el dataset? Se eliminarán duplicados y filas vacías. Esta acción no se puede deshacer.')) return;
+
+    try {
+        const res = await fetch('/api/csv/' + archivoIdActual + '/limpiar', {
+            method: 'POST',
+            headers: authHeaders()
+        });
+        const datos = await res.json();
+        if (!res.ok) { toast(datos.mensaje, 'error'); return; }
+
+        const r = datos.resumen;
+        const el = document.getElementById('resumenLimpieza');
+        el.innerHTML = `✅ <strong>Limpieza completada</strong> — 
+            Filas antes: ${r.filasAntes} · 
+            Duplicadas eliminadas: ${r.filasEliminadasDuplicadas} · 
+            Vacías eliminadas: ${r.filasEliminadasVacias} · 
+            Filas resultantes: ${r.filasDespues}`;
+        el.style.display = 'block';
+
+        toast('✅ Limpieza completada', 'ok');
+
+        // Recargar los datos limpios en la vista
+        await verDatos(archivoIdActual, document.getElementById('nombreDataset').textContent);
+        cargarListaArchivos();
+
+    } catch (e) {
+        toast('Error al limpiar.', 'error');
+    }
+}
+
+// ── Eliminar archivo ───────────────────────────────────────────────────────
+async function eliminarArchivo(id) {
+    if (!confirm('¿Eliminar este archivo permanentemente?')) return;
+    try {
+        const res = await fetch('/api/csv/' + id, { method: 'DELETE', headers: authHeaders() });
+        const datos = await res.json();
+        if (!res.ok) { toast(datos.mensaje, 'error'); return; }
+        toast('Archivo eliminado', 'ok');
+        if (archivoIdActual === id) {
+            document.getElementById('seccionDatos').style.display = 'none';
+            archivoIdActual = null;
+        }
+        cargarListaArchivos();
+    } catch (e) {
+        toast('Error al eliminar.', 'error');
+    }
+}
+
+// ── Exportar PDF ───────────────────────────────────────────────────────────
+function exportarPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const nombre = document.getElementById('nombreDataset').textContent || 'dataset';
+
+    doc.setFontSize(16);
+    doc.text('Reporte CSV — ' + nombre, 14, 18);
+    doc.setFontSize(11);
+    doc.text('Fecha: ' + new Date().toLocaleDateString('es-CO'), 14, 26);
+
+    if (datosActuales.length) {
+        doc.text('Total filas: ' + datosActuales.length, 14, 34);
+        doc.text('Columnas: ' + columnasActuales.join(', '), 14, 41);
+
+        // Estadísticas numéricas
+        let y = 52;
+        doc.setFontSize(12);
+        doc.text('Estadísticas por columna numérica:', 14, y);
+        y += 8;
+        doc.setFontSize(10);
+        columnasActuales.forEach(col => {
+            const vals = datosActuales.map(r => parseFloat(r[col])).filter(v => !isNaN(v));
+            if (!vals.length) return;
+            const avg = (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2);
+            doc.text(`${col}: Promedio ${avg}  |  Min ${Math.min(...vals)}  |  Max ${Math.max(...vals)}`, 14, y);
+            y += 7;
+        });
+
+        // Primeras 20 filas de la tabla
+        y += 6;
+        doc.setFontSize(12);
+        doc.text('Primeras filas del dataset:', 14, y);
+        y += 8;
+        doc.setFontSize(8);
+        const header = columnasActuales.join('  |  ');
+        doc.text(header.substring(0, 100), 14, y);
+        y += 6;
+        datosActuales.slice(0, 20).forEach(r => {
+            const fila = columnasActuales.map(c => r[c] ?? '').join('  |  ');
+            doc.text(fila.substring(0, 100), 14, y);
+            y += 5;
+            if (y > 270) { doc.addPage(); y = 20; }
+        });
+    } else {
+        doc.text('No hay datos cargados.', 14, 40);
+    }
+
+    doc.save('reporte-' + nombre + '.pdf');
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+cargarListaArchivos();
+</script>
+</body>
+</html>

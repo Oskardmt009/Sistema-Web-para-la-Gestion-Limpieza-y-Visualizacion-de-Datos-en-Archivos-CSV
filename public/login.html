@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión — CSV Manager</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 40px;
+            width: 100%;
+            max-width: 380px;
+        }
+        h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+        .subtitle { font-size: 14px; color: #94a3b8; margin-bottom: 28px; }
+        label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 6px; }
+        input {
+            width: 100%;
+            padding: 10px 14px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+            margin-bottom: 18px;
+            transition: border-color 0.2s;
+        }
+        input:focus { outline: none; border-color: #2563eb; }
+        button {
+            width: 100%;
+            padding: 11px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background: #1d4ed8; }
+        button:disabled { background: #334155; cursor: not-allowed; }
+        .error {
+            background: #450a0a;
+            border: 1px solid #991b1b;
+            color: #fca5a5;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .link { text-align: center; margin-top: 20px; font-size: 13px; color: #94a3b8; }
+        .link a { color: #60a5fa; text-decoration: none; }
+        .link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>📊 CSV Manager</h1>
+    <p class="subtitle">Inicia sesión para continuar</p>
+    <div class="error" id="error"></div>
+    <label for="correo">Correo electrónico</label>
+    <input type="email" id="correo" placeholder="tu@correo.com" required>
+    <label for="password">Contraseña</label>
+    <input type="password" id="password" placeholder="••••••••" required>
+    <button id="btn" onclick="login()">Ingresar</button>
+    <p class="link">¿No tienes cuenta? <a href="/registro.html">Regístrate aquí</a></p>
+</div>
+
+<script>
+// Si ya hay token válido, ir directo al dashboard
+if (localStorage.getItem('token')) {
+    window.location.href = '/dashboard.html';
+}
+
+async function login() {
+    const correo = document.getElementById('correo').value.trim();
+    const password = document.getElementById('password').value;
+    const errorEl = document.getElementById('error');
+    const btn = document.getElementById('btn');
+
+    errorEl.style.display = 'none';
+
+    if (!correo || !password) {
+        errorEl.textContent = 'Completa todos los campos.';
+        errorEl.style.display = 'block';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Ingresando...';
+
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ correo, password })
+        });
+
+        const datos = await res.json();
+
+        if (!res.ok) {
+            errorEl.textContent = datos.mensaje;
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        // Guardar token y nombre en localStorage
+        localStorage.setItem('token', datos.token);
+        localStorage.setItem('nombre', datos.nombre);
+        window.location.href = '/dashboard.html';
+
+    } catch (e) {
+        errorEl.textContent = 'Error de conexión con el servidor.';
+        errorEl.style.display = 'block';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Ingresar';
+    }
+}
+
+// Permitir Enter para enviar
+document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "name": "csv-cleaner-app",
+  "version": "2.0.0",
+  "description": "Sistema Web para Gestión, Limpieza y Visualización de Datos en Archivos CSV",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^9.7.0",
+    "multer": "^2.1.1",
+    "papaparse": "^5.5.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
